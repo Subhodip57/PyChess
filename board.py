@@ -219,3 +219,64 @@ class Board:
                     self.generate_king_moves(row, col, moves)
 
         return moves
+
+    def make_move(self, move):
+        """Make a move on the board and return info needed to unmake."""
+        # Store state
+        undo = {
+            'captured_piece': self.board[move.to_row][move.to_col],
+            'captured_rights': self.castling_rights.copy(),
+            'en_passant_square': self.en_passant_square,
+            'halfmove_clock': self.halfmove_clock
+        }
+
+        piece = self.board[move.from_row][move.from_col]
+        piece_type = piece & 7
+
+        # Move the piece
+        self.board[move.to_row][move.to_col] = piece
+        self.board[move.from_row][move.from_col] = EMPTY
+
+        # Handle promotion
+        if move.promotion:
+            self.board[move.to_row][move.to_col] = (piece & 24) | move.promotion
+
+        # Handle en passant capture
+        if move.is_en_passant:
+            capture_row = move.from_row
+            self.board[capture_row][move.to_col] = EMPTY
+
+        # Handle castling
+        if move.is_castling:
+            # Move the rook
+            if move.to_col == 6: # Kingside
+                self.board[move.to_row][5] = self.board[move.to_row][7]
+                self.board[move.to_row][7] = EMPTY
+            else:
+                self.board[move.to_row][3] = self.board[move.to_row][0]
+                self.board[move.to_row][0] = EMPTY
+
+        # Update en passant square
+        self.en_passant_square = None
+        if piece_type == PAWN and abs(move.to_row - move.from_row) == 2:
+            self.en_passant_square = ((move.from_row + move.to) // 2, move.from_col)
+
+        # Update castling rights
+        if piece_type == KING:
+            if self.to_move == WHITE:
+                self.castling_rights['K'] = False
+                self.castling_rights['Q'] = False
+            else:
+                self.castling_rights['k'] = False
+                self.castling_rights['q'] = False
+
+        if piece_type == ROOK:
+            if self.to_move == WHITE:
+                if move.from_row == 0 and move.from_col == 0:
+                    self.castling_rights['Q'] = False
+                elif move.from_row == 0 and move.from_col == 7:
+                    self.castling_rights['K'] = False
+
+            else:
+                if move.from_row == 7 and move.from_col == 0:
+                    self.
