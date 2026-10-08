@@ -1,3 +1,7 @@
+from move import Move
+from constants import *
+import pst
+
 class Board:
     def __init__(self):
         # 8x8 board, index [0][0] is a1, [7][7] is h8
@@ -279,4 +283,60 @@ class Board:
 
             else:
                 if move.from_row == 7 and move.from_col == 0:
-                    self.
+                    self.castling_rights['q'] = False
+                elif move.from_row == 7 and move.from_col == 7:
+                    self.castling_rights['k'] = False
+
+        # Update halfmove clock
+        if piece_type == PAWN or undo_info['captured_piece'] != EMPTY:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+
+        # Update move counters
+        if self.to_move == BLACK:
+            self.fullmove_number += 1
+
+        self.to_move = BLACK if self.to_move == WHITE else WHITE
+
+        return undo_info
+
+    def unmake_move(self, move, undo_info):
+        """Unmake a move and restore the previous position"""
+        # Switch back to the side that made the move
+        self.to_move = BLACK if self.to_move == WHITE else WHITE
+
+        # Restore move counters
+        if self.to_move == BLACK:
+            self.fullmove_number -= 1
+
+        piece = self.board[move.to_row][move.to_col]
+
+        # Restore Pawn
+        if move.promotion:
+            piece = (piece & 24) | PAWN
+
+        # Move piece back
+        self.board[move.from_row][move.from_col] = piece
+        self.board[move.to_row][move.to_col] = undo_info['captured_piece']
+
+        # Handle en passant
+        if move.is_en_passant:
+            capture_row = move.from_row
+            opponent_color = BLACK if self.to_move == WHITE else WHITE
+            self.board[capture_row][move.to_col] = opponent_color | PAWN
+
+        # Handle castling
+        if move.is_castling:
+            if move.to_col == 6: # Kingside
+                self.board[move.to__row][7] = self.board[move.to_row][5]
+                self.board[move.to_row][5] = EMPTY
+            else:   # Queenside
+                self.board[move.to_row][0] = self.board[move.to_row][3]
+                self.board[move.to_row][3] = EMPTY
+
+        # Restore state
+        self.castling_rights = undo_info['castling_rights']
+        self.en_passant_square = undo_info['en_passant_square']
+        self.halfmove_clock = undo_info['halfmove_clock']
+        
